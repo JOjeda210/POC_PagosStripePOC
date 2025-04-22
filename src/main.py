@@ -7,6 +7,7 @@ app = FastAPI()
 class PaymentRequest(BaseModel):
     amount: int
     currency: str = "usd"
+    payment_method: str = ""
 
 class RefundRequest(BaseModel):
     payment_id: str
@@ -18,7 +19,7 @@ def root():
 @app.post("/pay")
 def pay(req: PaymentRequest):
     try:
-        intent = stripe_service.create_payment_intent(req.amount, req.currency)
+        intent = stripe_service.create_payment_intent(req.amount, req.currency,req.payment_method)
         return {
             "payment_id": intent.id,
             "status": intent.status,
@@ -26,6 +27,15 @@ def pay(req: PaymentRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get("/paymentMethods")
+def paymentMethods():
+    try:
+        intent = stripe_service.get_payment_method()
+        return intent
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))    
 
 @app.post("/refund")
 def refund(req: RefundRequest):

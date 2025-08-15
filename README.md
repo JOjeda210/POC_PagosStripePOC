@@ -19,11 +19,10 @@ Una prueba de concepto (Proof of Concept) que demuestra la integración de **Str
 
 - ✅ **FastAPI** - Framework web moderno y rápido para APIs
 - ✅ **Stripe Integration** - Procesamiento seguro de pagos
-- ✅ **Async/Await** - Operaciones asíncronas para mejor rendimiento
 - ✅ **Validación automática** - Pydantic para validación de datos
-- ✅ **Documentación automática** - Swagger UI integrado
-- ✅ **Webhooks** - Manejo de eventos de Stripe
+- ✅ **Documentación automática** - Swagger UI integrado (FastAPI por defecto)
 - ✅ **Variables de entorno** - Configuración segura
+- ✅ **Logging** - Sistema de registro para auditoría
 
 ## 📁 Estructura del Proyecto
 
@@ -32,9 +31,9 @@ PoC Stripe/
 ├── src/
 │   ├── __init__.py           # Paquete principal
 │   ├── main.py              # Aplicación FastAPI principal
-│   ├── stripe_service.py    # Servicio de integración con Stripe
-│   └── readme.md           # Documentación del módulo src
+│   └── stripe_service.py    # Servicio de integración con Stripe
 ├── venv/                   # Entorno virtual de Python
+├── .env                   # Variables de entorno (no versionar)
 ├── .gitignore             # Archivos ignorados por Git
 └── README.md              # Este archivo
 ```
@@ -76,17 +75,14 @@ PoC Stripe/
 1. **Crea un archivo `.env` en la raíz del proyecto:**
    ```env
    # Stripe Configuration
-   STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
    STRIPE_SECRET_KEY=sk_test_your_secret_key_here
+   STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
    STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
    
    # FastAPI Configuration
    DEBUG=True
    HOST=localhost
    PORT=8000
-   
-   # Database (si aplica)
-   DATABASE_URL=sqlite:///./stripe_poc.db
    ```
 
 2. **Obtén tus claves de Stripe:**
@@ -112,49 +108,67 @@ python -m uvicorn main:app --reload --host localhost --port 8000
 
 ## 📚 API Endpoints
 
-### Principales endpoints disponibles:
+### Endpoints implementados:
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `GET` | `/` | Endpoint de bienvenida |
-| `POST` | `/create-payment-intent` | Crear un Payment Intent |
-| `POST` | `/confirm-payment` | Confirmar un pago |
-| `GET` | `/payment/{payment_id}` | Obtener detalles de un pago |
-| `POST` | `/webhook` | Webhook para eventos de Stripe |
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/` | Endpoint de bienvenida | Ninguno |
+| `POST` | `/pay` | Crear un Payment Intent | `amount`, `currency`, `payment_method` |
+| `GET` | `/paymentMethods` | Crear método de pago de prueba | Ninguno |
+| `POST` | `/refund` | Procesar un reembolso | `payment_id` |
+| `GET` | `/status/{payment_id}` | Obtener estado de un pago | `payment_id` (path) |
 
-### Ejemplo de uso:
+### Modelos de datos:
 
-```python
-# Crear un Payment Intent
-import requests
+#### PaymentRequest
+```json
+{
+  "amount": 2000,
+  "currency": "usd",
+  "payment_method": ""
+}
+```
 
-response = requests.post("http://localhost:8000/create-payment-intent", 
-    json={
-        "amount": 2000,  # $20.00 en centavos
-        "currency": "usd",
-        "description": "Compra de prueba"
-    }
-)
+#### RefundRequest
+```json
+{
+  "payment_id": "pi_1234567890"
+}
+```
 
-payment_intent = response.json()
-print(f"Client Secret: {payment_intent['client_secret']}")
+### Ejemplos de uso:
+
+#### 1. Crear un Payment Intent
+```bash
+curl -X POST "http://localhost:8000/pay" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 2000,
+    "currency": "usd",
+    "payment_method": ""
+  }'
+```
+
+#### 2. Obtener método de pago de prueba
+```bash
+curl -X GET "http://localhost:8000/paymentMethods"
+```
+
+#### 3. Consultar estado de pago
+```bash
+curl -X GET "http://localhost:8000/status/pi_1234567890"
+```
+
+#### 4. Procesar reembolso
+```bash
+curl -X POST "http://localhost:8000/refund" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payment_id": "pi_1234567890"
+  }'
 ```
 
 ## 🧪 Testing
-
-### Ejecutar tests
-
-```bash
-# Instalar pytest si no está instalado
-pip install pytest pytest-asyncio
-
-# Ejecutar todos los tests
-pytest
-
-# Ejecutar con coverage
-pip install pytest-cov
-pytest --cov=src
-```
 
 ### Datos de prueba de Stripe
 
@@ -166,36 +180,45 @@ Utiliza estas tarjetas de prueba:
 | `4000000000000002` | Visa - Tarjeta declinada |
 | `4000000000009995` | Visa - Fondos insuficientes |
 
+### Limitaciones de montos
+- **Mínimo**: $0.50 (50 centavos)
+- **Máximo**: $999,999.99
+
+### Monedas soportadas
+- `usd`, `eur`, `gbp`, `cad`, `aud`, `jpy`
+
 ## 🔒 Seguridad
 
-### Mejores prácticas implementadas:
+### Características de seguridad implementadas:
 
-- ✅ **Variables de entorno** para claves sensibles
-- ✅ **Validación de webhooks** con signatures
-- ✅ **HTTPS requerido** en producción
+- ✅ **Variables de entorno** para claves API
 - ✅ **Validación de entrada** con Pydantic
+- ✅ **Validación de montos y monedas**
 - ✅ **Manejo seguro de errores**
+- ✅ **Logging detallado** para auditoría
+- ✅ **Verificación de formato de claves** Stripe
 
 ### ⚠️ Importante:
 
-- **Nunca** hardcodees las claves de Stripe en el código
-- Usa siempre las **claves de prueba** durante desarrollo
-- Implementa **logging** para auditoría
-- Valida todos los **webhooks** de Stripe
+- Las claves API se leen desde variables de entorno
+- Todas las operaciones son validadas antes de enviar a Stripe
+- Los errores son capturados y loggeados apropiadamente
+- Solo se usan claves de prueba en desarrollo
 
 ## 📖 Documentación
 
-### Documentación adicional:
+### Funciones principales:
+
+- **`main.py`**: Define los endpoints de FastAPI y maneja requests/responses
+- **`stripe_service.py`**: Contiene toda la lógica de integración con Stripe
+- **Validaciones**: Montos, monedas, IDs de pago y claves API
+- **Logging**: Registro de todas las operaciones para debugging
+
+### Enlaces útiles:
 
 - [Documentación de Stripe](https://stripe.com/docs)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [Stripe Testing](https://stripe.com/docs/testing)
-
-### Estructura del código:
-
-- **`main.py`**: Configuración principal de FastAPI y rutas
-- **`stripe_service.py`**: Lógica de negocio para Stripe
-- **`.env`**: Variables de configuración (no versionar)
 
 ## 🤝 Contribución
 

@@ -234,7 +234,7 @@ Este proyecto es una **Prueba de Concepto** con fines educativos.
 
 ## 📞 Contacto
 
-**Desarrollador**: Jesús Ojeda  
+**Desarrollador**: Jesús Ojeda - Backend Developer
 **Proyecto**: PoC Stripe - FastAPI Integration
 
 ---
